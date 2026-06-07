@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:latest
+    restart: always
+    container_name: tmdb-db
+    volumes:
+      - db-data:/var/lib/postgresql/data/pgdata
+      - ./database/:/docker-entrypoint-initdb.d/:z
+    environment:
+      - POSTGRES_DB=tmdb_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=root
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tmdb_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  parser:
+    build:
+      context: ./parser
+      dockerfile: Dockerfile
+    container_name: tmdb-parser
+    networks:
+      - app-network
+    volumes:
+      - ./parser/:/app/:z
+    environment:
+      - DB_NAME=tmdb_db
+      - DB_USER=postgres
+      - DB_PASSWORD=root
+      - DB_HOST=db
+      - RUNNING_IN_DOCKER=true
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["sh", "-c", "python main.py && tail -f /dev/null"]
+
+volumes:
+  db-data:
+
+networks:
+  app-network:
+    driver: bridge
