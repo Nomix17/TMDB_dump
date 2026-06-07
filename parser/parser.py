@@ -97,11 +97,18 @@ class Parser:
     self.db.upsert_person(personDict)
 
   def parse(self, tmdbId: str, mediaType: str) -> None:
+    start = time.time()
+    print(f"Fetching Info for: {tmdbId} ({mediaType})")
     if(mediaType == "person"):
       personDict = self.fetchPersonInformation(tmdbId)
       if(personDict):
+        print("Parsing info into db ... ")
         self.parsePersonDict(personDict)
     else:
       mediaDict = self.fetchMediaInformation(tmdbId, mediaType)
       if mediaDict:
+        print("Parsing info into db ... ")
         self.parseMediaDict(mediaDict, mediaType)
+
+    elapsed = time.time() - start
+    print(f"Done processing {tmdbId} ({mediaType}) in {elapsed:.2f}s\n")
