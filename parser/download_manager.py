@@ -1,11 +1,14 @@
 import os
+import gzip
+import shutil
 import requests
 from urllib.request import urlretrieve
 from urllib.error import HTTPError
 from tqdm import tqdm
 from datetime import datetime, timezone, timedelta
 
-default_download_dir = "./"
+default_download_dir = "/tmp/ids_exports"
+os.makedirs(default_download_dir, exist_ok=True)
 
 def getLatestDate() -> str | None:
   print("Finding latest export date ...")
@@ -34,7 +37,7 @@ def safeDownloadAnExport(file_name: str, attempt_number = 0) -> str | None:
       else:
         res = input(f"File already exists in {full_download_path}, do you want to redownload it? (y/N): ")
       if("n" in res.lower() or res.strip() == ""):
-        return full_download_path
+        return decompressExport(full_download_path)
 
     with tqdm(unit='B', unit_scale=True, unit_divisor=1024, miniters=1, desc=file_name) as progress_bar:
 
@@ -48,13 +51,24 @@ def safeDownloadAnExport(file_name: str, attempt_number = 0) -> str | None:
         full_download_path,
         reporthook=progress_hook
       )
-    return path
+    return decompressExport(path)
     
   except HTTPError as e:
     print(f"\nError: failed to download {file_name}, error code: {e.code}, reason: {e.reason}")
     if e.code == 404 or attempt_number == 5:
       return None
     return safeDownloadAnExport(file_name, attempt_number + 1)
+
+def decompressExport(export_path: str) -> str | None:
+  print(f"Decompressing {export_path}  ...")
+  if(export_path == None or not export_path.endswith(".gz")):
+    return export_path
+  new_path = export_path.replace(".gz","")
+  with gzip.open(export_path, 'rb') as f_in:
+    with open(new_path, 'wb') as f_out:
+      shutil.copyfileobj(f_in, f_out)
+
+  return new_path 
 
 def downloadDailyExports() -> dict[str, str |None]:
   used_date = getLatestDate()
@@ -67,3 +81,4 @@ def downloadDailyExports() -> dict[str, str |None]:
     "tv_export_path": safeDownloadAnExport(tv_export_file),
     "person_export_path": safeDownloadAnExport(person_export_file)
   }
+
