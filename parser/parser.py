@@ -1,7 +1,6 @@
 import os
-import requests
 import time
-from typing import Optional
+from fetcher import fetchMediaInformation, fetchPersonInformation
 from dao import TMDB_DAO
 
 class Parser:
@@ -10,39 +9,6 @@ class Parser:
     if not self.api_key:
       raise EnvironmentError("TMDB_API_KEY environment variable is not set")
     self.db = db
-
-  def fetchInformation(self, url) -> Optional[dict]:
-    params = {
-      "api_key": self.api_key,
-      "language": "en-US",
-      "append_to_response": "credits,videos,images,keywords",
-    }
-    while True:
-      try:
-        response = requests.get(url, headers={"accept": "application/json"}, params=params)
-        response.raise_for_status()
-        return response.json()
-
-      except requests.exceptions.HTTPError as e:
-        if e.response is not None and e.response.status_code == 429:
-          retry_after = int(e.response.headers.get("Retry-After", 5))
-          print(f"Rate limited. Sleeping {retry_after}s...")
-          time.sleep(retry_after)
-          continue
-        print(f"HTTP error: {e}")
-        return None
-
-      except requests.exceptions.RequestException as e:
-        print(f"Request failed: {e}")
-        return None
-
-  def fetchMediaInformation(self, tmdbId: str, mediaType: str) -> Optional[dict]:
-    url = f"https://api.themoviedb.org/3/{mediaType}/{tmdbId}"
-    return self.fetchInformation(url)
-
-  def fetchPersonInformation(self, tmdbId: str) -> Optional[dict]:
-    url = f"https://api.themoviedb.org/3/person/{tmdbId}"
-    return self.fetchInformation(url)
 
   def parseMediaDict(self, mediaDict: dict, mediaType: str) -> None:
     try:
@@ -100,12 +66,12 @@ class Parser:
     start = time.time()
     print(f"Fetching Info for: {tmdbId} ({mediaType})")
     if(mediaType == "person"):
-      personDict = self.fetchPersonInformation(tmdbId)
+      personDict = fetchPersonInformation(self.api_key, tmdbId)
       if(personDict):
         print("Parsing info into db ... ")
         self.parsePersonDict(personDict)
     else:
-      mediaDict = self.fetchMediaInformation(tmdbId, mediaType)
+      mediaDict = fetchMediaInformation(self.api_key, tmdbId, mediaType)
       if mediaDict:
         print("Parsing info into db ... ")
         self.parseMediaDict(mediaDict, mediaType)
