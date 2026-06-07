@@ -59,7 +59,7 @@ class TMDB_DAO:
         %(vote_count)s, %(adult)s, %(video)s, %(poster_path)s, %(backdrop_path)s,
         %(imdb_id)s, %(origin_country)s, %(collection_id)s
       )
-      ON CONFLICT (id) DO UPDATE SET
+      ON CONFLICT (id, media_type) DO UPDATE SET
         title = EXCLUDED.title,
         original_title = EXCLUDED.original_title,
         original_language = EXCLUDED.original_language,
@@ -151,49 +151,49 @@ class TMDB_DAO:
       [(k["id"], k["name"]) for k in keywords],
     )
 
-  def link_media_genres(self, media_id: int, genres: list[dict]):
+  def link_media_genres(self, media_id: int, media_type: str, genres: list[dict]):
     if not genres:
       return
     execute_values(
       self.cursor,
-      "INSERT INTO media_genres (media_id, genre_id) VALUES %s ON CONFLICT DO NOTHING",
-      [(media_id, g["id"]) for g in genres],
+      "INSERT INTO media_genres (media_id, media_type, genre_id) VALUES %s ON CONFLICT DO NOTHING",
+      [(media_id, media_type, g["id"]) for g in genres],
     )
 
-  def link_media_production_companies(self, media_id: int, companies: list[dict]):
+  def link_media_production_companies(self, media_id: int, media_type: str, companies: list[dict]):
     if not companies:
       return
     execute_values(
       self.cursor,
-      "INSERT INTO media_production_companies (media_id, company_id) VALUES %s ON CONFLICT DO NOTHING",
-      [(media_id, c["id"]) for c in companies],
+      "INSERT INTO media_production_companies (media_id, media_type, company_id) VALUES %s ON CONFLICT DO NOTHING",
+      [(media_id, media_type, c["id"]) for c in companies],
     )
 
-  def link_media_production_countries(self, media_id: int, countries: list[dict]):
+  def link_media_production_countries(self, media_id: int, media_type: str, countries: list[dict]):
     if not countries:
       return
     execute_values(
       self.cursor,
-      "INSERT INTO media_production_countries (media_id, country_iso) VALUES %s ON CONFLICT DO NOTHING",
-      [(media_id, c["iso_3166_1"]) for c in countries],
+      "INSERT INTO media_production_countries (media_id, media_type, country_iso) VALUES %s ON CONFLICT DO NOTHING",
+      [(media_id, media_type, c["iso_3166_1"]) for c in countries],
     )
 
-  def link_media_spoken_languages(self, media_id: int, languages: list[dict]):
+  def link_media_spoken_languages(self, media_id: int, media_type: str, languages: list[dict]):
     if not languages:
       return
     execute_values(
       self.cursor,
-      "INSERT INTO media_spoken_languages (media_id, language_iso) VALUES %s ON CONFLICT DO NOTHING",
-      [(media_id, l["iso_639_1"]) for l in languages],
+      "INSERT INTO media_spoken_languages (media_id, media_type, language_iso) VALUES %s ON CONFLICT DO NOTHING",
+      [(media_id, media_type, l["iso_639_1"]) for l in languages],
     )
 
-  def link_media_keywords(self, media_id: int, keywords: list[dict]):
+  def link_media_keywords(self, media_id: int, media_type: str, keywords: list[dict]):
     if not keywords:
       return
     execute_values(
       self.cursor,
-      "INSERT INTO media_keywords (media_id, keyword_id) VALUES %s ON CONFLICT DO NOTHING",
-      [(media_id, k["id"]) for k in keywords],
+      "INSERT INTO media_keywords (media_id, media_type, keyword_id) VALUES %s ON CONFLICT DO NOTHING",
+      [(media_id, media_type, k["id"]) for k in keywords],
     )
 
   def upsert_person(self, info: dict):
@@ -203,10 +203,12 @@ class TMDB_DAO:
       """
       INSERT INTO persons (
         id, name, also_known_as, biography, birthday, deathday,
-        gender, place_of_birth, popularity, profile_path, imdb_id, homepage
+        gender, place_of_birth, popularity, profile_path, imdb_id,
+        homepage, known_for_department
       ) VALUES (
         %(id)s, %(name)s, %(also_known_as)s, %(biography)s, %(birthday)s, %(deathday)s,
-        %(gender)s, %(place_of_birth)s, %(popularity)s, %(profile_path)s, %(imdb_id)s, %(homepage)s
+        %(gender)s, %(place_of_birth)s, %(popularity)s, %(profile_path)s, %(imdb_id)s,
+        %(homepage)s, %(known_for_department)s
       )
       ON CONFLICT (id) DO UPDATE SET
         name = EXCLUDED.name,
@@ -219,41 +221,50 @@ class TMDB_DAO:
         popularity = EXCLUDED.popularity,
         profile_path = EXCLUDED.profile_path,
         imdb_id = EXCLUDED.imdb_id,
-        homepage = EXCLUDED.homepage
+        homepage = EXCLUDED.homepage,
+        known_for_department = EXCLUDED.known_for_department
       """,
       safe_data,
     )
 
-  def upsert_cast(self, media_id: int, cast: list[dict]):
+  def upsert_cast(self, media_id: int, media_type: str, cast: list[dict]):
     if not cast:
       return
     execute_values(
       self.cursor,
       """
-      INSERT INTO media_cast (media_id, person_id, character, "order", credit_id)
+      INSERT INTO media_cast (
+        media_id, media_type,
+        person_id, character,
+        "order", credit_id
+      )
       VALUES %s ON CONFLICT DO NOTHING
       """,
-      [(media_id, c["id"], c.get("character"), c.get("order"), c.get("credit_id")) for c in cast],
+      [(media_id, media_type, c["id"], c.get("character"), c.get("order"), c.get("credit_id")) for c in cast],
     )
 
-  def upsert_crew(self, media_id: int, crew: list[dict]):
+  def upsert_crew(self, media_id: int, media_type: str, crew: list[dict]):
     if not crew:
       return
     execute_values(
       self.cursor,
       """
-      INSERT INTO media_crew (media_id, person_id, job, department, credit_id)
+      INSERT INTO media_crew (
+        media_id, media_type,
+        person_id, job,
+        department, credit_id
+      )
       VALUES %s ON CONFLICT DO NOTHING
       """,
-      [(media_id, c["id"], c.get("job"), c.get("department"), c.get("credit_id")) for c in crew],
+      [(media_id, media_type, c["id"], c.get("job"), c.get("department"), c.get("credit_id")) for c in crew],
     )
 
-  def insert_images(self, media_id: int, images: dict):
+  def insert_images(self, media_id: int, media_type: str, images: dict):
     rows = []
     for img_type, key in [("poster", "posters"), ("backdrop", "backdrops"), ("still", "stills")]:
       for img in images.get(key, []):
         rows.append((
-          media_id, img_type, img["file_path"],
+          media_id, media_type, img_type, img["file_path"],
           img.get("width") if img.get("width") != "" else None,
           img.get("height") if img.get("height") != "" else None,
           img.get("iso_639_1"),
@@ -265,24 +276,36 @@ class TMDB_DAO:
     execute_values(
       self.cursor,
       """
-      INSERT INTO images (media_id, type, file_path, width, height, language, vote_average, vote_count)
+      INSERT INTO images ( 
+        media_id, media_type,
+        type, file_path,
+        width, height,
+        language, vote_average,
+        vote_count
+      )
       VALUES %s ON CONFLICT DO NOTHING
       """,
       rows,
     )
 
-  def insert_videos(self, media_id: int, videos: list[dict]):
+  def insert_videos(self, media_id: int, media_type: str, videos: list[dict]):
     if not videos:
       return
     execute_values(
       self.cursor,
       """
-      INSERT INTO videos (id, media_id, name, key, site, type, official, published_at, language)
+      INSERT INTO videos (
+        id, media_id,
+        media_type, name,
+        key, site,
+        type, official,
+        published_at, language
+      )
       VALUES %s ON CONFLICT (id) DO NOTHING
       """,
       [
         (
-          v["id"], media_id, v.get("name"), v["key"],
+          v["id"], media_id, media_type, v.get("name"), v["key"],
           v.get("site"), v.get("type"), v.get("official"),
           v.get("published_at") if v.get("published_at") != "" else None,
           v.get("iso_639_1"),
@@ -291,13 +314,19 @@ class TMDB_DAO:
       ],
     )
 
-  def upsert_seasons(self, media_id: int, seasons: list[dict]):
+  def upsert_seasons(self, media_id: int, media_type: str, seasons: list[dict]):
     if not seasons:
       return
     execute_values(
       self.cursor,
       """
-      INSERT INTO seasons (id, media_id, season_number, name, overview, poster_path, air_date, episode_count)
+      INSERT INTO seasons (
+        id, media_id,
+        media_type, season_number,
+        name, overview,
+        poster_path, air_date,
+        episode_count
+      )
       VALUES %s
       ON CONFLICT (id) DO UPDATE SET
         name = EXCLUDED.name,
@@ -308,22 +337,29 @@ class TMDB_DAO:
       """,
       [
         (
-          s["id"], media_id, s["season_number"], s.get("name"),
+          s["id"], media_id, media_type, s["season_number"], s.get("name"),
           s.get("overview"), s.get("poster_path"),
           s.get("air_date") if s.get("air_date") != "" else None,
-          s.get("episode_count") if s.get("episode_count") != "" else None
+          s.get("episode_count") if s.get("episode_count") != "" else None,
         )
         for s in seasons
       ],
     )
 
-  def upsert_episodes(self, media_id: int, season_id: int, episodes: list[dict]):
+  def upsert_episodes(self, media_id: int, media_type: str, season_id: int, episodes: list[dict]):
     if not episodes:
       return
     execute_values(
       self.cursor,
       """
-      INSERT INTO episodes (id, season_id, media_id, episode_number, name, overview, still_path, air_date, runtime, vote_average, vote_count)
+      INSERT INTO episodes (
+        id, season_id,
+        media_id, media_type,
+        episode_number, name,
+        overview, still_path,
+        air_date, runtime,
+        vote_average, vote_count
+      )
       VALUES %s
       ON CONFLICT (id) DO UPDATE SET
         name = EXCLUDED.name,
@@ -336,7 +372,7 @@ class TMDB_DAO:
       """,
       [
         (
-          e["id"], season_id, media_id, e["episode_number"],
+          e["id"], season_id, media_id, media_type, e["episode_number"],
           e.get("name"), e.get("overview"), e.get("still_path"),
           e.get("air_date") if e.get("air_date") != "" else None,
           e.get("runtime") if e.get("runtime") != "" else None,
