@@ -1,7 +1,9 @@
 import json
+import os
 from dotenv import load_dotenv
 from parser import Parser
 from dao import TMDB_DAO
+from fetcher import fetchChangedIds
 from download_manager import downloadDailyExports
 load_dotenv()
 
@@ -19,10 +21,18 @@ def dumpTMDB(parser):
   processJsonLines(parser, downloaded_exports["tv_export_path"], "tv")
   processJsonLines(parser, downloaded_exports["person_export_path"], "person")
 
+def updateTMDB(parser):
+  api_key = os.getenv("TMDB_API_KEY")
+  for media_type in ["movie", "tv", "person"]:
+    ids_to_update = fetchChangedIds(api_key, media_type)
+    for tmdb_id in ids_to_update:
+      parser.fetchAndStore(tmdb_id, media_type)
+
 def main() -> None:
   db = TMDB_DAO()
   parser = Parser(db)
   dumpTMDB(parser)
+  updateTMDB(parser)
 
 if __name__ == "__main__":
   main()
