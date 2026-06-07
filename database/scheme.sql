@@ -29,7 +29,7 @@ CREATE TABLE media (
   backdrop_path TEXT,
   imdb_id TEXT,
   origin_country TEXT[],
-  collection_id INTEGER REFERENCES collections (id) ON DELETE SET NULL
+  collection_id INTEGER REFERENCES collections (id) ON DELETE SET NULL,
   PRIMARY KEY (id, media_type)
 );
 
@@ -45,7 +45,8 @@ CREATE TABLE persons (
   popularity NUMERIC(10, 4),
   profile_path TEXT,
   imdb_id TEXT,
-  homepage TEXT
+  homepage TEXT,
+  known_for_department TEXT
 );
 
 CREATE TABLE genres (
@@ -77,92 +78,113 @@ CREATE TABLE keywords (
 );
 
 CREATE TABLE media_genres (
-  media_id INTEGER REFERENCES media (id) ON DELETE CASCADE,
+  media_id INTEGER,
+  media_type TEXT,
   genre_id INTEGER REFERENCES genres (id) ON DELETE CASCADE,
-  PRIMARY KEY (media_id, genre_id)
+  PRIMARY KEY (media_id, media_type, genre_id),
+  FOREIGN KEY (media_id, media_type) REFERENCES media (id, media_type) ON DELETE CASCADE
 );
 
 CREATE TABLE media_production_companies (
-  media_id INTEGER REFERENCES media (id) ON DELETE CASCADE,
+  media_id INTEGER,
+  media_type TEXT,
   company_id INTEGER REFERENCES production_companies (id) ON DELETE CASCADE,
-  PRIMARY KEY (media_id, company_id)
+  PRIMARY KEY (media_id, media_type, company_id),
+  FOREIGN KEY (media_id, media_type) REFERENCES media (id, media_type) ON DELETE CASCADE
 );
 
 CREATE TABLE media_production_countries (
-  media_id INTEGER REFERENCES media (id) ON DELETE CASCADE,
+  media_id INTEGER,
+  media_type TEXT,
   country_iso TEXT REFERENCES production_countries (iso_3166_1) ON DELETE CASCADE,
-  PRIMARY KEY (media_id, country_iso)
+  PRIMARY KEY (media_id, media_type, country_iso),
+  FOREIGN KEY (media_id, media_type) REFERENCES media (id, media_type) ON DELETE CASCADE
 );
 
 CREATE TABLE media_spoken_languages (
-  media_id INTEGER REFERENCES media (id) ON DELETE CASCADE,
+  media_id INTEGER,
+  media_type TEXT,
   language_iso TEXT REFERENCES spoken_languages (iso_639_1) ON DELETE CASCADE,
-  PRIMARY KEY (media_id, language_iso)
+  PRIMARY KEY (media_id, media_type, language_iso),
+  FOREIGN KEY (media_id, media_type) REFERENCES media (id, media_type) ON DELETE CASCADE
 );
 
 CREATE TABLE media_keywords (
-  media_id INTEGER REFERENCES media (id) ON DELETE CASCADE,
+  media_id INTEGER,
+  media_type TEXT,
   keyword_id INTEGER REFERENCES keywords (id) ON DELETE CASCADE,
-  PRIMARY KEY (media_id, keyword_id)
+  PRIMARY KEY (media_id, media_type, keyword_id),
+  FOREIGN KEY (media_id, media_type) REFERENCES media (id, media_type) ON DELETE CASCADE
 );
 
 CREATE TABLE media_cast (
-  media_id INTEGER REFERENCES media (id) ON DELETE CASCADE,
+  media_id INTEGER,
+  media_type TEXT,
   person_id INTEGER REFERENCES persons (id) ON DELETE CASCADE,
   character TEXT,
   "order" INTEGER,
   credit_id TEXT,
-  PRIMARY KEY (media_id, person_id, credit_id)
+  PRIMARY KEY (media_id, media_type, person_id, credit_id),
+  FOREIGN KEY (media_id, media_type) REFERENCES media (id, media_type) ON DELETE CASCADE
 );
 
 CREATE TABLE media_crew (
-  media_id INTEGER REFERENCES media (id) ON DELETE CASCADE,
+  media_id INTEGER,
+  media_type TEXT,
   person_id INTEGER REFERENCES persons (id) ON DELETE CASCADE,
   job TEXT,
   department TEXT,
   credit_id TEXT,
-  PRIMARY KEY (media_id, person_id, credit_id)
+  PRIMARY KEY (media_id, media_type, person_id, credit_id),
+  FOREIGN KEY (media_id, media_type) REFERENCES media (id, media_type) ON DELETE CASCADE
 );
 
 CREATE TABLE images (
   id SERIAL PRIMARY KEY,
-  media_id INTEGER REFERENCES media (id) ON DELETE CASCADE,
+  media_id INTEGER,
+  media_type TEXT,
   type TEXT CHECK (type IN ('poster', 'backdrop', 'still')),
   file_path TEXT NOT NULL,
   width INTEGER,
   height INTEGER,
   language TEXT,
   vote_average NUMERIC(6, 3),
-  vote_count INTEGER
-)
-;
+  vote_count INTEGER,
+  FOREIGN KEY (media_id, media_type) REFERENCES media (id, media_type) ON DELETE CASCADE
+);
+
 CREATE TABLE videos (
   id TEXT PRIMARY KEY,
-  media_id INTEGER REFERENCES media (id) ON DELETE CASCADE,
+  media_id INTEGER,
+  media_type TEXT,
   name TEXT,
   key TEXT NOT NULL,
   site TEXT,
   type TEXT,
   official BOOLEAN DEFAULT FALSE,
   published_at TIMESTAMPTZ,
-  language TEXT
+  language TEXT,
+  FOREIGN KEY (media_id, media_type) REFERENCES media (id, media_type) ON DELETE CASCADE
 );
 
 CREATE TABLE seasons (
   id INTEGER PRIMARY KEY,
-  media_id INTEGER REFERENCES media (id) ON DELETE CASCADE,
+  media_id INTEGER,
+  media_type TEXT,
   season_number INTEGER NOT NULL,
   name TEXT,
   overview TEXT,
   poster_path TEXT,
   air_date DATE,
-  episode_count INTEGER
+  episode_count INTEGER,
+  FOREIGN KEY (media_id, media_type) REFERENCES media (id, media_type) ON DELETE CASCADE
 );
 
 CREATE TABLE episodes (
   id INTEGER PRIMARY KEY,
   season_id INTEGER REFERENCES seasons (id) ON DELETE CASCADE,
-  media_id INTEGER REFERENCES media (id) ON DELETE CASCADE,
+  media_id INTEGER,
+  media_type TEXT,
   episode_number INTEGER NOT NULL,
   name TEXT,
   overview TEXT,
@@ -170,7 +192,8 @@ CREATE TABLE episodes (
   air_date DATE,
   runtime INTEGER,
   vote_average NUMERIC(6, 3),
-  vote_count INTEGER
+  vote_count INTEGER,
+  FOREIGN KEY (media_id, media_type) REFERENCES media (id, media_type) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_media_type ON media (media_type);
