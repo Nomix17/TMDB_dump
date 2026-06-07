@@ -93,11 +93,15 @@ class Parser:
       self.db._rollback()
       raise e
 
+  def parsePersonDict(self, personDict) -> None:
+    self.db.upsert_person(personDict)
+
   def parse(self, tmdbId: str, mediaType: str) -> None:
     if(mediaType == "person"):
-      mediaDict = self.fetchPersonInformation(tmdbId)
+      personDict = self.fetchPersonInformation(tmdbId)
+      if(personDict):
+        self.parsePersonDict(personDict)
     else:
       mediaDict = self.fetchMediaInformation(tmdbId, mediaType)
-    print(tmdbId)
-    if mediaDict:
-      self.parseMediaDict(mediaDict, mediaType)
+      if mediaDict:
+        self.parseMediaDict(mediaDict, mediaType)
