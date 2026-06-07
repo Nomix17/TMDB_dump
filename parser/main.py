@@ -11,7 +11,7 @@ def processJsonLines(parser, export_path, mediaType):
       for line in json_file:
         data = json.loads(line)
         if(data.get("id")):
-          parser.parse(data["id"], mediaType)
+          parser.fetchAndStore(data["id"], mediaType)
 
 def dumpTMDB(parser):
   downloaded_exports = downloadDailyExports()

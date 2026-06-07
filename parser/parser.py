@@ -62,7 +62,7 @@ class Parser:
   def parsePersonDict(self, personDict) -> None:
     self.db.upsert_person(personDict)
 
-  def parse(self, tmdbId: str, mediaType: str) -> None:
+  def fetchAndStore(self, tmdbId: str, mediaType: str) -> None:
     start = time.time()
     print(f"Fetching Info for: {tmdbId} ({mediaType})")
     if(mediaType == "person"):
